@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>备机管理系统</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+tailwind.config = {
+theme: {
+extend: {
+colors: {
+primary: '#3b82f6',
+secondary: '#64748b'
+},
+borderRadius: {
+'none': '0px',
+'sm': '2px',
+DEFAULT: '4px',
+'md': '8px',
+'lg': '12px',
+'xl': '16px',
+'2xl': '20px',
+'3xl': '24px',
+'full': '9999px',
+'button': '4px'
+}
+}
+}
+};
+</script>
+<style>
+body {
+font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+.font-logo {
+font-family: 'Pacifico', cursive;
+}
+.input-base {
+border: 1px solid #d1d5db;
+padding: 8px 12px;
+border-radius: 4px;
+outline: none;
+}
+.input-base:focus {
+border-color: #3b82f6;
+box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+.dropdown-menu {
+position: absolute;
+top: 100%;
+left: 0;
+background: white;
+border: 1px solid #e5e7eb;
+border-radius: 4px;
+box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+z-index: 10;
+width: 100%;
+max-height: 200px;
+overflow-y: auto;
+}
+.dropdown-item {
+padding: 8px 12px;
+cursor: pointer;
+}
+.dropdown-item:hover {
+background-color: #f3f4f6;
+}
+.icon-button {
+display: flex;
+justify-content: center;
+align-items: center;
+width: 32px;
+height: 32px;
+border-radius: 4px;
+cursor: pointer;
+}
+.icon-button:hover {
+background-color: #f3f4f6;
+}
+.modal-overlay {
+position: fixed;
+inset: 0;
+background-color: rgba(0, 0, 0, 0.5);
+display: flex;
+justify-content: center;
+align-items: center;
+z-index: 50;
+}
+.modal-content {
+background: white;
+border-radius: 8px;
+box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+max-width: 600px;
+width: 90%;
+max-height: 90vh;
+overflow-y: auto;
+}
+.table-cell {
+padding: 12px 16px;
+border-bottom: 1px solid #e5e7eb;
+}
+.table-header {
+background-color: #f9fafb;
+font-weight: 600;
+}
+.action-button {
+color: #3b82f6;
+text-decoration: underline;
+cursor: pointer;
+margin-right: 12px;
+}
+.action-button:last-child {
+margin-right: 0;
+}
+.notification-option {
+padding: 8px 12px;
+border-radius: 4px;
+cursor: pointer;
+margin-bottom: 8px;
+}
+.notification-option.selected {
+background-color: #dbeafe;
+border: 1px solid #3b82f6;
+}
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+<!-- Header -->
+<header class="bg-white shadow-sm py-4 px-6 flex items-center justify-between">
+<div class="flex items-center space-x-4">
+<h1 class="text-xl font-bold font-logo text-primary">logo</h1>
+<nav class="flex space-x-6">
+<a href="#" class="text-gray-700 hover:text-primary">首页</a>
+<a href="#" class="text-gray-700 hover:text-primary">资源管理</a>
+<a href="#" class="text-gray-700 hover:text-primary font-medium">备机管理</a>
+<a href="#" class="text-gray-700 hover:text-primary">监控中心</a>
+<a href="#" class="text-gray-700 hover:text-primary">系统设置</a>
+</nav>
+</div>
+<div class="flex items-center space-x-4">
+<div class="relative">
+<input type="text" placeholder="全局搜索..." class="input-base w-64 pl-10 pr-4">
+<i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+</div>
+<div class="flex items-center space-x-2">
+<img src="https://via.placeholder.com/32x32" alt="User Avatar" class="w-8 h-8 rounded-full">
+<span class="text-gray-700">管理员</span>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-grow p-6">
+<div class="bg-white rounded-lg shadow-md p-6 mb-6">
+<div class="flex justify-between items-center mb-6">
+<h2 class="text-lg font-semibold">备机列表</h2>
+<div class="flex space-x-3">
+<button class="!rounded-button bg-primary text-white px-4 py-2 whitespace-nowrap flex items-center">
+<i class="fas fa-plus mr-2"></i> 新建
+</button>
+<button class="!rounded-button bg-white border border-gray-300 text-gray-700 px-4 py-2 whitespace-nowrap flex items-center">
+<i class="fas fa-download mr-2"></i> 导出
+</button>
+<button class="!rounded-button bg-white border border-gray-300 text-gray-700 px-4 py-2 whitespace-nowrap flex items-center">
+<i class="fas fa-trash-alt mr-2"></i> 删除
+</button>
+<button class="!rounded-button bg-white border border-gray-300 text-gray-700 px-4 py-2 whitespace-nowrap flex items-center">
+<i class="fas fa-bell mr-2"></i> 告警通知
+</button>
+</div>
+</div>
+<!-- Filters -->
+<div class="grid grid-cols-5 gap-4 mb-6">
+<div class="relative">
+<label class="block text-sm font-medium text-gray-700 mb-1">机房</label>
+<div class="relative">
+<button class="input-base w-full text-left flex justify-between items-center">
+<span>请选择</span>
+<i class="fas fa-chevron-down text-gray-400 ml-2"></i>
+</button>
+<div class="dropdown-menu hidden mt-1">
+<div class="p-2">
+<input type="text" placeholder="搜索机房" class="input-base w-full text-sm mb-2">
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> 北京数据中心
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> 上海数据中心
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> 广州数据中心
+</div>
+</div>
+</div>
+</div>
+<div class="relative">
+<label class="block text-sm font-medium text-gray-700 mb-1">厂商</label>
+<div class="relative">
+<button class="input-base w-full text-left flex justify-between items-center">
+<span>请选择</span>
+<i class="fas fa-chevron-down text-gray-400 ml-2"></i>
+</button>
+<div class="dropdown-menu hidden mt-1">
+<div class="p-2">
+<input type="text" placeholder="搜索厂商" class="input-base w-full text-sm mb-2">
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> 华为
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> 戴尔
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> 联想
+</div>
+</div>
+</div>
+</div>
+<div class="relative">
+<label class="block text-sm font-medium text-gray-700 mb-1">型号</label>
+<div class="relative">
+<button class="input-base w-full text-left flex justify-between items-center">
+<span>请选择</span>
+<i class="fas fa-chevron-down text-gray-400 ml-2"></i>
+</button>
+<div class="dropdown-menu hidden mt-1">
+<div class="p-2">
+<input type="text" placeholder="搜索型号" class="input-base w-full text-sm mb-2">
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> R750
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> PowerEdge R650
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> ThinkSystem SR650
+</div>
+</div>
+</div>
+</div>
+<div class="col-span-2">
+<label class="block text-sm font-medium text-gray-700 mb-1">关键字搜索</label>
+<div class="relative">
+<input type="text" placeholder="搜索 CPU / 内存 / 硬盘" class="input-base w-full pl-10">
+<i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+</div>
+</div>
+</div>
+<!-- Table -->
+<div class="border border-gray-200 rounded-lg overflow-hidden">
+<table class="min-w-full divide-y divide-gray-200">
+<thead>
+<tr>
+<th class="table-cell table-header text-left"><input type="checkbox" class="form-checkbox"></th>
+<th class="table-cell table-header text-left">机房</th>
+<th class="table-cell table-header text-left">厂商</th>
+<th class="table-cell table-header text-left">套餐</th>
+<th class="table-cell table-header text-left">型号</th>
+<th class="table-cell table-header text-left">CPU</th>
+<th class="table-cell table-header text-left">内存</th>
+<th class="table-cell table-header text-left">硬盘</th>
+<th class="table-cell table-header text-left">备机数量</th>
+<th class="table-cell table-header text-left">操作</th>
+</tr>
+</thead>
+<tbody class="bg-white divide-y divide-gray-200">
+<tr>
+<td class="table-cell"><input type="checkbox" class="form-checkbox"></td>
+<td class="table-cell">北京数据中心</td>
+<td class="table-cell">华为</td>
+<td class="table-cell">基础型</td>
+<td class="table-cell">R750</td>
+<td class="table-cell">Intel Xeon Silver 4314 (2.4GHz, 16C)</td>
+<td class="table-cell">64GB DDR4 ECC</td>
+<td class="table-cell">2TB NVMe SSD</td>
+<td class="table-cell">2 台</td>
+<td class="table-cell">
+<span class="action-button">查看</span>
+<span class="action-button">编辑</span>
+<span class="action-button">复制</span>
+<span class="action-button">删除</span>
+</td>
+</tr>
+<tr>
+<td class="table-cell"><input type="checkbox" class="form-checkbox"></td>
+<td class="table-cell">上海数据中心</td>
+<td class="table-cell">戴尔</td>
+<td class="table-cell">增强型</td>
+<td class="table-cell">PowerEdge R650</td>
+<td class="table-cell">Intel Xeon Gold 5318Y (2.1GHz, 20C)</td>
+<td class="table-cell">128GB DDR4 ECC</td>
+<td class="table-cell">4TB NVMe SSD</td>
+<td class="table-cell">2 台</td>
+<td class="table-cell">
+<span class="action-button">查看</span>
+<span class="action-button">编辑</span>
+<span class="action-button">复制</span>
+<span class="action-button">删除</span>
+</td>
+</tr>
+<tr>
+<td class="table-cell"><input type="checkbox" class="form-checkbox"></td>
+<td class="table-cell">广州数据中心</td>
+<td class="table-cell">联想</td>
+<td class="table-cell">企业型</td>
+<td class="table-cell">ThinkSystem SR650</td>
+<td class="table-cell">AMD EPYC 7742 (2.25GHz, 64C)</td>
+<td class="table-cell">256GB DDR4 ECC</td>
+<td class="table-cell">8TB NVMe SSD</td>
+<td class="table-cell">2 台</td>
+<td class="table-cell">
+<span class="action-button">查看</span>
+<span class="action-button">编辑</span>
+<span class="action-button">复制</span>
+<span class="action-button">删除</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="mt-6 flex items-center justify-between">
+<div class="text-sm text-gray-700">
+显示第 1 到 3 条记录，共 3 条
+</div>
+<div class="flex space-x-2">
+<button class="!rounded-button bg-white border border-gray-300 text-gray-700 px-3 py-1 disabled:opacity-50">上一页</button>
+<button class="!rounded-button bg-primary text-white px-3 py-1">1</button>
+<button class="!rounded-button bg-white border border-gray-300 text-gray-700 px-3 py-1">下一页</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-white border-t py-4 px-6 text-center text-gray-500 text-sm">
+© 2025 备机管理系统. 保留所有权利.
+</footer>
+<!-- Modals -->
+<!-- New/Edit Modal -->
+<div id="newModal" class="modal-overlay hidden">
+<div class="modal-content p-6">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-lg font-semibold">新建备机</h3>
+<button onclick="closeModal('newModal')" class="text-gray-500 hover:text-gray-700">
+<i class="fas fa-times"></i>
+</button>
+</div>
+<form>
+<div class="mb-4">
+<label class="block text-sm font-medium text-gray-700 mb-1">机房</label>
+<div class="relative">
+<button class="input-base w-full text-left flex justify-between items-center">
+<span>请选择</span>
+<i class="fas fa-chevron-down text-gray-400 ml-2"></i>
+</button>
+<div class="dropdown-menu hidden mt-1">
+<div class="p-2">
+<input type="text" placeholder="搜索机房" class="input-base w-full text-sm mb-2">
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> 北京数据中心
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> 上海数据中心
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> 广州数据中心
+</div>
+</div>
+</div>
+</div>
+<div class="mb-4">
+<label class="block text-sm font-medium text-gray-700 mb-1">厂商</label>
+<div class="relative">
+<button class="input-base w-full text-left flex justify-between items-center">
+<span>请选择</span>
+<i class="fas fa-chevron-down text-gray-400 ml-2"></i>
+</button>
+<div class="dropdown-menu hidden mt-1">
+<div class="p-2">
+<input type="text" placeholder="搜索厂商" class="input-base w-full text-sm mb-2">
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> 华为
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> 戴尔
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> 联想
+</div>
+</div>
+</div>
+</div>
+<div class="mb-4">
+<label class="block text-sm font-medium text-gray-700 mb-1">套餐</label>
+<div class="relative">
+<button class="input-base w-full text-left flex justify-between items-center">
+<span>请选择</span>
+<i class="fas fa-chevron-down text-gray-400 ml-2"></i>
+</button>
+<div class="dropdown-menu hidden mt-1">
+<div class="p-2">
+<input type="text" placeholder="搜索套餐" class="input-base w-full text-sm mb-2">
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> 基础型
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> 增强型
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> 企业型
+</div>
+</div>
+</div>
+</div>
+<div class="mb-4">
+<label class="block text-sm font-medium text-gray-700 mb-1">型号</label>
+<div class="relative">
+<button class="input-base w-full text-left flex justify-between items-center">
+<span>请选择</span>
+<i class="fas fa-chevron-down text-gray-400 ml-2"></i>
+</button>
+<div class="dropdown-menu hidden mt-1">
+<div class="p-2">
+<input type="text" placeholder="搜索型号" class="input-base w-full text-sm mb-2">
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> R750
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> PowerEdge R650
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> ThinkSystem SR650
+</div>
+</div>
+</div>
+</div>
+<div class="mb-4">
+<label class="block text-sm font-medium text-gray-700 mb-1">CPU</label>
+<input type="text" class="input-base w-full">
+</div>
+<div class="mb-4">
+<label class="block text-sm font-medium text-gray-700 mb-1">内存</label>
+<input type="text" class="input-base w-full">
+</div>
+<div class="mb-4">
+<label class="block text-sm font-medium text-gray-700 mb-1">硬盘</label>
+<input type="text" class="input-base w-full">
+</div>
+<div class="mb-6">
+<label class="block text-sm font-medium text-gray-700 mb-1">备机数量</label>
+<input type="number" value="2" class="input-base w-full">
+</div>
+<div class="flex justify-end space-x-3">
+<button type="button" onclick="closeModal('newModal')" class="!rounded-button bg-white border border-gray-300 text-gray-700 px-4 py-2">取消</button>
+<button type="submit" class="!rounded-button bg-primary text-white px-4 py-2">保存</button>
+</div>
+</form>
+</div>
+</div>
+<!-- View Details Modal -->
+<div id="viewModal" class="modal-overlay hidden">
+<div class="modal-content p-6">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-lg font-semibold">备机详情</h3>
+<button onclick="closeModal('viewModal')" class="text-gray-500 hover:text-gray-700">
+<i class="fas fa-times"></i>
+</button>
+</div>
+<div class="space-y-4">
+<div>
+<p class="text-sm text-gray-500">机房</p>
+<p class="font-medium">北京数据中心</p>
+</div>
+<div>
+<p class="text-sm text-gray-500">厂商</p>
+<p class="font-medium">华为</p>
+</div>
+<div>
+<p class="text-sm text-gray-500">套餐</p>
+<p class="font-medium">基础型</p>
+</div>
+<div>
+<p class="text-sm text-gray-500">型号</p>
+<p class="font-medium">R750</p>
+</div>
+<div>
+<p class="text-sm text-gray-500">CPU</p>
+<p class="font-medium">Intel Xeon Silver 4314 (2.4GHz, 16C)</p>
+</div>
+<div>
+<p class="text-sm text-gray-500">内存</p>
+<p class="font-medium">64GB DDR4 ECC</p>
+</div>
+<div>
+<p class="text-sm text-gray-500">硬盘</p>
+<p class="font-medium">2TB NVMe SSD</p>
+</div>
+<div>
+<p class="text-sm text-gray-500">备机数量</p>
+<p class="font-medium">2 台</p>
+</div>
+</div>
+<div class="mt-6 flex justify-end">
+<button onclick="closeModal('viewModal')" class="!rounded-button bg-primary text-white px-4 py-2">关闭</button>
+</div>
+</div>
+</div>
+<!-- Notification Settings Modal -->
+<div id="notificationModal" class="modal-overlay hidden">
+<div class="modal-content p-6">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-lg font-semibold">告警通知设置</h3>
+<button onclick="closeModal('notificationModal')" class="text-gray-500 hover:text-gray-700">
+<i class="fas fa-times"></i>
+</button>
+</div>
+<div class="mb-6">
+<h4 class="font-medium mb-2">通知对象</h4>
+<div class="space-y-4">
+<div class="border border-gray-200 rounded-lg p-4">
+<div class="flex items-center mb-3">
+<input type="checkbox" id="personalAccount" class="mr-2">
+<label for="personalAccount" class="font-medium">个人账户</label>
+</div>
+<div class="ml-6">
+<div class="relative">
+<button class="input-base w-full text-left flex justify-between items-center">
+<span>请选择用户账号</span>
+<i class="fas fa-chevron-down text-gray-400 ml-2"></i>
+</button>
+<div class="dropdown-menu hidden mt-1">
+<div class="p-2">
+<input type="text" placeholder="搜索用户" class="input-base w-full text-sm mb-2">
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> 张伟 (zhangwei@example.com)
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> 李娜 (lina@example.com)
+</div>
+<div class="dropdown-item">
+<input type="checkbox" class="mr-2"> 王强 (wangqiang@example.com)
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="border border-gray-200 rounded-lg p-4">
+<div class="flex items-center mb-3">
+<input type="checkbox" id="groupChat" class="mr-2">
+<label for="groupChat" class="font-medium">用户群聊</label>
+</div>
+<div class="ml-6 space-y-3">
+<div>
+<label class="block text-sm text-gray-600 mb-1">群聊名称/ID</label>
+<input type="text" placeholder="请输入群聊名称或 ID" class="input-base w-full">
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="mb-6">
+<h4 class="font-medium mb-2">通知时效</h4>
+<div class="flex space-x-4">
+<div class="notification-option selected flex-1 text-center">立即通知</div>
+<div class="notification-option flex-1 text-center">持续 30 分钟通知</div>
+<div class="notification-option flex-1 text-center">持续 1 小时通知</div>
+</div>
+</div>
+<div class="mb-6">
+<h4 class="font-medium mb-2">通知频率</h4>
+<div class="grid grid-cols-2 gap-4">
+<div class="notification-option selected text-center">每 1 小时通知一次</div>
+<div class="notification-option text-center">每 4 小时通知一次</div>
+<div class="notification-option text-center">每 8 小时通知一次</div>
+<div class="notification-option text-center">每 24 小时通知一次</div>
+</div>
+</div>
+<div class="flex justify-end space-x-3">
+<button onclick="closeModal('notificationModal')" class="!rounded-button bg-white border border-gray-300 text-gray-700 px-4 py-2">取消</button>
+<button class="!rounded-button bg-primary text-white px-4 py-2">保存设置</button>
+</div>
+</div>
+</div>
+<script>
+// Utility functions
+function openModal(id) {
+document.getElementById(id).classList.remove('hidden');
+}
+function closeModal(id) {
+document.getElementById(id).classList.add('hidden');
+}
+// Simulate dropdown behavior
+document.querySelectorAll('.relative button').forEach(button => {
+button.addEventListener('click', (e) => {
+e.stopPropagation();
+const menu = button.nextElementSibling;
+if (menu && menu.classList.contains('dropdown-menu')) {
+// Close all other dropdowns first
+document.querySelectorAll('.dropdown-menu').forEach(m => {
+if (m !== menu) m.classList.add('hidden');
+});
+menu.classList.toggle('hidden');
+}
+});
+});
+// Close dropdowns when clicking outside
+window.addEventListener('click', (e) => {
+if (!e.target.closest('.relative')) {
+document.querySelectorAll('.dropdown-menu').forEach(menu => {
+menu.classList.add('hidden');
+});
+}
+});
+// Handle notification option selection
+document.querySelectorAll('.notification-option').forEach(option => {
+option.addEventListener('click', () => {
+const parent = option.parentElement;
+parent.querySelectorAll('.notification-option').forEach(opt => opt.classList.remove('selected'));
+option.classList.add('selected');
+});
+});
+// Handle checkbox selection in dropdowns
+document.querySelectorAll('.dropdown-item input[type="checkbox"]').forEach(checkbox => {
+checkbox.addEventListener('click', (e) => {
+e.stopPropagation();
+});
+});
+// Export to Excel functionality
+document.querySelector('[onclick="exportToExcel()"]')?.addEventListener('click', () => {
+alert("导出功能已触发，实际项目中将生成 Excel 文件");
+});
+// Notification modal toggle
+document.querySelector('[onclick="openNotificationModal()"]')?.addEventListener('click', () => {
+openModal('notificationModal');
+});
+// Initialize modals for demo purposes
+document.addEventListener('DOMContentLoaded', () => {
+// Bind new button
+document.querySelector('button.flex.items-center:first-child')?.addEventListener('click', () => {
+openModal('newModal');
+});
+// Bind view buttons
+document.querySelectorAll('.action-button:first-child').forEach(btn => {
+btn.addEventListener('click', () => {
+openModal('viewModal');
+});
+});
+// Bind edit buttons
+document.querySelectorAll('.action-button:nth-child(2)').forEach(btn => {
+btn.addEventListener('click', () => {
+openModal('newModal');
+});
+});
+// Bind notification button
+document.querySelector('button.flex.items-center:last-child')?.addEventListener('click', () => {
+openModal('notificationModal');
+});
+// Notification options selection
+document.querySelectorAll('.notification-option').forEach(option => {
+option.addEventListener('click', () => {
+const parent = option.parentElement;
+parent.querySelectorAll('.notification-option').forEach(opt => opt.classList.remove('selected'));
+option.classList.add('selected');
+});
+});
+});
+</script>
+</body>
+</html>
